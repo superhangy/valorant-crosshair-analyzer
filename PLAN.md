@@ -68,7 +68,7 @@ discipline from a player's *own real match footage*.
   Git identity configured to use the GitHub noreply email (privacy —
   avoids exposing real email in commit history, relevant since repo may
   go public later for an application).
-- Week 1 (Python fundamentals) in progress:
+- Week 1 (Python fundamentals):
   - `day1_basics.py` created — covers variables, f-strings, if/else
     (indentation vs Java braces), lists, dicts, for-loops, functions with
     default args, all with inline Java-comparison comments.
@@ -78,11 +78,43 @@ discipline from a player's *own real match footage*.
     Python — needed step-by-step help opening Notepad and running Command
     Prompt. Keep instructions concrete and small (one action at a time,
     confirm output before moving on).
-  - Pending task: add `win_rates["Omen"] = 49` to the dict and re-run to
-    see it appear in output. (Note: the original task also asked for a
-    `best_agent()` function using `max(..., key=...)` — that's too advanced
-    for this stage; simplify to a plain for-loop + if-comparison instead
-    when we get there, since that only uses concepts already introduced.)
+  - Learner reported having taught themselves enough Python independently
+    to move on — Week 1 considered done, the `win_rates["Omen"]` /
+    `best_agent()` exercise was skipped rather than completed.
+- Week 2 (object detection concepts, pretrained model — no training yet)
+  in progress:
+  - Installed `ultralytics` (pulls in `torch`/`torchvision`), `opencv-python`,
+    `matplotlib`.
+  - `week2_pretrained_test.py` — grabs one frame from a recorded clip via
+    OpenCV, runs pretrained YOLOv8n (`yolov8n.pt`, COCO-trained) on it,
+    prints detections, saves an annotated image. Proves the pipeline
+    (video -> frame -> model -> boxes) works end-to-end.
+  - `extract_candidates.py` — helper to pull several frames from a
+    timestamp range of a clip (for manually finding a frame with a real
+    enemy visible, since Claude can only view still images, not video).
+  - `clip_options.py` — helper to preview one late-clip frame from several
+    candidate clips at once, to pick which clip to sample from.
+  - **Finding (important, not a bug to fix):** across every real gameplay
+    frame tested, the pretrained COCO model failed to reliably detect
+    enemies. It repeatedly boxed the player's own first-person hand/weapon/
+    ability viewmodel as `person` (once even as `motorcycle`), and
+    separately missed clearly-visible real enemies entirely (a downed body,
+    a running enemy in the open) — a consistent pattern of both false
+    positives on the viewmodel and false negatives on actual enemies. This
+    is the expected/desired result for this stage: it confirms the
+    pipeline works and demonstrates concretely why Week 3's fine-tuning on
+    a Valorant-specific dataset is necessary — a generic COCO model cannot
+    reliably tell a glowing ability-fist from a person, or spot small/
+    distant enemies. Worth keeping this framing (and maybe one of these
+    annotated frames) for the essay: it's a clean before/after story.
+  - Since Claude has no video-understanding capability (only single still
+    images via the Read tool), finding a frame with a real visible enemy
+    required manually extracting and eyeballing many candidate frames per
+    clip — this is expected/normal for this project, not a workaround to
+    "fix". A more scalable approach for Week 3+ (once fine-tuning makes
+    detection reliable) is to run the model across every frame
+    programmatically and only inspect the frames it flags, rather than
+    scanning blindly.
 
 ## How to continue on a new machine / new Claude Code session
 1. Install Python (winget: `winget install --id Python.Python.3.12`) and
