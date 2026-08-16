@@ -441,6 +441,10 @@ discipline from a player's *own real match footage*.
   detector) — swapping in the grayscale detector there, and/or testing
   the luminance-contrast theory directly, are the natural next steps if
   this thread continues.
+  Annotated comparison images saved to the repo root:
+  `colortest_annotated_{Yellow,Purple,Red}.jpg` (color model baseline) and
+  `graytest_annotated_{Yellow,Purple,Red}.jpg` (grayscale model) —
+  `test_grayscale_colorinvariance.py` regenerates both sets.
 
 ## How to continue on a new machine / new Claude Code session
 1. Install Python (winget: `winget install --id Python.Python.3.12`) and

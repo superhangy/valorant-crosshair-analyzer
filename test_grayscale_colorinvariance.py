@@ -25,7 +25,7 @@ def best_conf(result):
     return len(confs), max(confs)
 
 
-def run_model(name, weights_path, convert_to_gray):
+def run_model(name, weights_path, convert_to_gray, tag):
     model = YOLO(weights_path)
     print(f"\n--- {name} ---")
     for color, path in FRAMES.items():
@@ -36,11 +36,15 @@ def run_model(name, weights_path, convert_to_gray):
         result = model.predict(img, conf=0.01, verbose=False)[0]
         count, conf = best_conf(result)
         print(f"{color:8s} detections={count:2d} best_conf={conf:.3f}")
+        annotated = result.plot()
+        out_path = f"{tag}_{color}.jpg"
+        cv2.imwrite(out_path, annotated)
+        print(f"  saved {out_path}")
 
 
 def main():
-    run_model("Color-trained model, color frames (baseline)", COLOR_WEIGHTS, convert_to_gray=False)
-    run_model("Gray-trained model, grayscale frames", GRAY_WEIGHTS, convert_to_gray=True)
+    run_model("Color-trained model, color frames (baseline)", COLOR_WEIGHTS, convert_to_gray=False, tag="colortest_annotated")
+    run_model("Gray-trained model, grayscale frames", GRAY_WEIGHTS, convert_to_gray=True, tag="graytest_annotated")
 
 
 if __name__ == "__main__":
