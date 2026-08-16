@@ -400,6 +400,48 @@ discipline from a player's *own real match footage*.
   make as much progress as fits each day/session. Phase labels above are
   loose ordering, not a calendar.
 
+- **Grayscale-training experiment (learner's idea): does stripping color
+  entirely fix the outline-color sensitivity?** Rather than fight the
+  outline-color/contrast variable, tested training the head detector with
+  no color information at all, so it can only learn shape/contrast, never
+  hue. `make_grayscale_dataset.py` converts every image in `dataset_head/`
+  to grayscale (kept 3-channel, R=G=B, so the YOLO architecture is
+  unchanged) and copies label files over unmodified (labels don't depend
+  on color) into `dataset_head_gray/` (gitignored, regenerate via the
+  script). `finetune_head_gray.py` trains `yolov8n.pt` on it — same
+  50-epoch/imgsz 640/batch 16 setup as the color head detector. Result:
+  precision 0.899, recall 0.850, mAP50 0.892, mAP50-95 0.444 (slightly
+  below the color detector's 0.936/0.885/0.929/0.487 — expected, since it
+  gave up color as a usable signal). Weights at
+  `runs/detect/runs/valorant_head_gray_v1/weights/best.pt` (gitignored).
+  **Color-invariance test (`test_grayscale_colorinvariance.py`):** reran
+  the same 3 real in-game outline-color frames (Yellow/Purple/Red,
+  `clipB_t016/032/064.0s.jpg`) through both models — color model on
+  original color frames, gray model on grayscale-converted frames, both at
+  conf=0.01:
+  | Color | Color model (color frames) | Gray model (gray frames) |
+  |---|---|---|
+  | Yellow | 8 detections, best conf 0.746 | 13 detections, best conf 0.793 |
+  | Purple | 23 detections, best conf 0.485 | 27 detections, best conf 0.438 |
+  | Red | 2 detections, best conf 0.061 | 5 detections, best conf 0.286 |
+  Partial fix, not a full one: the confidence spread across colors shrank
+  (0.685 -> 0.507 range) and the worst case (Red) improved substantially
+  (0.061 -> 0.286), but the same relative ranking survived
+  (Yellow > Purple > Red) in both models. Interpretation: grayscale
+  conversion removes hue but preserves *luminance*, and the contrast
+  theory from the earlier color test (outline-vs-background contrast,
+  not hue-distance-from-red) predicts exactly this — a color's luminance
+  relative to the tan Shooting Range walls still varies even once hue is
+  gone, so grayscale training reduces but doesn't eliminate the
+  background-contrast dependency. Good essay material: shows a
+  hypothesis-driven fix, honestly evaluated, that partially worked and
+  revealed the deeper variable (luminance contrast) rather than fully
+  resolving it. Not yet integrated into the main crosshair-analysis
+  pipeline (`analyze_crosshair_placement.py` still uses the color head
+  detector) — swapping in the grayscale detector there, and/or testing
+  the luminance-contrast theory directly, are the natural next steps if
+  this thread continues.
+
 ## How to continue on a new machine / new Claude Code session
 1. Install Python (winget: `winget install --id Python.Python.3.12`) and
    Git if not already present.

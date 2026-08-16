@@ -2,5 +2,6 @@ yolov8n.pt
 .env
 dataset/
 dataset_head/
+dataset_head_gray/
 runs/
 engagements/
