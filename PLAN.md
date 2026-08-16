@@ -445,6 +445,28 @@ discipline from a player's *own real match footage*.
   `colortest_annotated_{Yellow,Purple,Red}.jpg` (color model baseline) and
   `graytest_annotated_{Yellow,Purple,Red}.jpg` (grayscale model) —
   `test_grayscale_colorinvariance.py` regenerates both sets.
+- **Grayscale head detector swapped into the main pipeline
+  (`analyze_crosshair_placement.py`).** Two changes: `HEAD_MODEL_PATH` now
+  points at `valorant_head_gray_v1/weights/best.pt`, and the frame fed to
+  the head model is grayscale-converted first (a throwaway in-memory copy
+  — the saved annotated output still uses the original color frame, so
+  boxes stay visually checkable; body/`enemies` detector is untouched,
+  still runs on the color frame). Rerun on the same Deathmatch clip:
+  **23 engagements, average pre-aim 6.28%** (previous color-model run: 41
+  engagements, 7.91%). Engagement count nearly halved — not yet root-
+  caused. Two competing explanations, not yet distinguished: the gray
+  model could be more conservative and missing real reveals it used to
+  catch (its recall was already lower, 0.850 vs 0.885), or it could be
+  correctly rejecting false positives the color model let through. **Not
+  yet spot-checked/audited** the way the original 41-engagement result
+  was (11 frames across the full distribution, confirmed genuine) —
+  needed before trusting the 6.28% number. Do that audit before using
+  this result anywhere.
+  Also fixed while here: `analyze_crosshair_placement.py` didn't clear
+  `OUTPUT_DIR` (`engagements/`) before writing, so reruns left stale
+  frames from previous runs mixed in with new ones (only caught because
+  the two runs happened to produce different engagement counts/
+  timestamps) — now does `shutil.rmtree` on the folder first.
 
 ## How to continue on a new machine / new Claude Code session
 1. Install Python (winget: `winget install --id Python.Python.3.12`) and

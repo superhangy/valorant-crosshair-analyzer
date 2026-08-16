@@ -8,13 +8,14 @@
 
 import csv
 import os
+import shutil
 
 import cv2
 import matplotlib.pyplot as plt
 from ultralytics import YOLO
 
 CLIP_PATH = r"C:\Users\alexh\Videos\NVIDIA\Valorant\Valorant 2026.08.14 - 19.49.11.07.mp4"
-HEAD_MODEL_PATH = "runs/detect/runs/valorant_head_v1/weights/best.pt"
+HEAD_MODEL_PATH = "runs/detect/runs/valorant_head_gray_v1/weights/best.pt"
 BODY_MODEL_PATH = "runs/detect/runs/valorant_enemy_v1-3/weights/best.pt"
 OUTPUT_DIR = "engagements"
 
@@ -49,6 +50,11 @@ def point_in_box(px, py, box):
 
 
 def main():
+    # Clear old annotated frames first - otherwise a rerun (e.g. after
+    # swapping models) leaves stale frames from the previous run mixed in
+    # with the new ones, since filenames are timestamp-based and rarely
+    # collide.
+    shutil.rmtree(OUTPUT_DIR, ignore_errors=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     head_model = YOLO(HEAD_MODEL_PATH)
     body_model = YOLO(BODY_MODEL_PATH)
@@ -81,7 +87,14 @@ def main():
         sample_index += 1
         timestamp = frame_index / source_fps
 
-        head_results = head_model(frame, conf=HEAD_CONF_THRESHOLD, verbose=False)
+        # Head model was trained on grayscale-only images (see
+        # make_grayscale_dataset.py) to reduce sensitivity to Enemy
+        # Highlight Color - must feed it grayscale input too, or it sees
+        # a different input distribution than it trained on. Body model
+        # below stays color, since it's still the color-trained detector.
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        head_input = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+        head_results = head_model(head_input, conf=HEAD_CONF_THRESHOLD, verbose=False)
         head_boxes = head_results[0].boxes
 
         body_boxes_xyxy = []
