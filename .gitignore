@@ -1,7 +1,14 @@
 yolov8n.pt
+yolo26n.pt
 .env
 dataset/
 dataset_head/
 dataset_head_gray/
+dataset_ally_classifier/
 runs/
 engagements/
+engagements_*/
+validation_frames_*/
+__pycache__/
+hardneg_tmp.jpg
+*_log.txt

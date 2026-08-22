@@ -1,0 +1,6 @@
+# False-positive engagement frames — 1000 IQ CYPHER! C9 OXY CYPHER VALORANT RANKED GAMEPLAY
+# Source: engagements_1000-iq-cypher-c9-oxy-cypher-valorant-ranked-gameplay\ (316 frames total)
+# User is manually reviewing all annotated frames and calling out ones where the
+# detection is wrong (false engagement / bad head-box / bad body-box). List filenames
+# below as they're flagged, one per line, e.g.:
+# t0063.60s.jpg

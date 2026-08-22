@@ -1,0 +1,99 @@
+# False-positive engagement frames — Demon1 Chamber Gameplay (engagements_demon1_chamber\)
+# Confirmed by visual inspection (not full manual pass — spot sample only, GPU-safe,
+# no model run). Each entry: filename, category, evidence.
+
+t0752.48s.jpg | gun/viewmodel-as-head | round-end "WON" screen, player's own victory-gesture
+    fist/hand viewmodel boxed as "head 0.72" (high confidence). Matches the known
+    head-model weakness noted in analyze_crosshair_placement.py (fires on own
+    gun/fist viewmodel).
+
+t1023.25s.jpg | teammate-as-target | nametag under detected character reads "Skye"
+    in green (matches demon1's own team-panel color, top-left roster). Enemy roster
+    (top-right) lists Raze/Clove/Reyna/Iso only — no Skye on enemy team. Head box
+    is well-localized (tight, correct position) but on the wrong team entirely.
+
+## FULL PASS (2026-08-18) — all 66 frames in engagements_demon1_chamber\ reviewed
+## (the post-filter set: 133 raw -> 66 after ally-color/killcam/buy-phase filters).
+## Confirmed ally roster (read directly off two in-game scoreboards, t0181.54s and
+## t0705.38s): Me, Skye, Clove, ENVY|keznitdeuS, Viper. Enemy roster: yeetmachine ttv,
+## Calamity, Raze, Iso, Reyna. Result: 45 of 66 (68%) are still contaminated — the
+## three existing filters did not touch any of the categories below.
+
+### Category: teammate-as-target (29 frames)
+Existing filters only catch teammate-as-target when color/nameplate happens to be
+readable at filter time; these all have a teammate name (Clove, Skye, Viper, or
+ENVY|keznitdeuS) directly under the detected box, confirmed against the roster above:
+t0008.03s, t0088.13s, t0136.10s, t0137.37s, t0140.17s, t0451.07s, t0497.14s,
+t0551.01s, t0553.61s, t0555.67s, t0557.44s, t0559.34s, t0561.04s, t0727.38s,
+t0728.11s, t0873.88s, t0877.25s, t0879.28s, t0880.11s, t0881.25s, t0883.51s,
+t0938.58s, t1023.25s, t1024.78s, t1029.15s, t1350.12s, t1351.19s, t1352.89s,
+t1425.19s
+
+Correction (2026-08-18, second pass with user): t0088.13s, t0497.14s, t0559.34s,
+t0561.04s, t0728.11s, t1350.12s, t1352.89s, t1425.19s were originally miscalled
+"legit" in the first pass — error traced to Viper being misjudged as enemy at
+t0088.13s (assumed absent from the ally list shown on-screen at that moment) before
+the scoreboard read at t0181.54s/t0705.38s confirmed Viper is actually a teammate.
+t0451.07s carries two independent issues: the replay/highlight-overlay problem
+(below) AND the underlying target is also a teammate.
+
+### Category: post-death spectate contamination (19 frames)
+Player is dead and spectating a teammate (either the "SPECTATORS N" HUD counter is
+visible top-right, or a persistent "KILLED BY X / COMBAT REPORT" overlay + "Switch
+Player" UI is showing). The pre-aim measured in these frames belongs to whichever
+teammate is being spectated, not demon1's own aim — none of the three existing
+filters check for this:
+t0011.90s, t0060.33s, t0091.63s, t0173.67s, t0180.14s, t0259.74s, t0321.90s,
+t0562.17s, t0563.94s, t0653.31s, t0656.04s, t0671.14s, t0679.58s, t0957.51s,
+t1039.35s, t1044.91s, t1242.18s, t1379.02s, t1905.09s, t1918.63s
+
+### Category: scoreboard/tab-menu portrait-as-head (3 frames)
+Player is holding Tab to view the scoreboard; the head detector fires on a small
+player-portrait thumbnail inside the UI, not a 3D character at all:
+t0181.54s, t0705.38s, t0904.81s
+
+### Category: in-VOD replay/highlight overlay (2 frames)
+A second streamer's facecam + a "REPLAY" tag appear over the footage (this is a
+different streamer's clip/highlight embedded in the source VOD, not demon1's live
+play) — distinct from the killcam filter, which doesn't catch this:
+t0450.34s, t0451.07s
+
+### Category: gun/viewmodel-as-head (2 frames, in addition to the t0752.48s example
+### above, which pre-filtering already removed from this 66-frame set)
+No character in frame at all, or detector fires on demon1's own weapon model instead
+of (or during) a spectated moment — t0664.21s was originally miscalled "legit":
+t0664.21s, t0789.54s
+
+### Legit engagements confirmed in this pass (11 frames, no issue found)
+t0001.57s, t0081.67s, t0317.94s, t0403.84s, t1237.28s, t1364.69s,
+t1515.72s, t1516.39s, t1588.22s, t1889.46s, t1890.83s
+
+Correction (2026-08-18, third pass, automated OCR check): t0656.04s was also
+miscalled "legit" in both manual passes -- it has a faint "SPECTATORS 1" in
+the top-right corner that's easy to miss by eye but reads clean under OCR.
+Moved to the spectate-contamination category above. Final tally: only 11/66
+(17%) of this "filtered" dataset are confirmed real engagements.
+
+## Implication
+The 66-frame "clean" dataset (11.35% avg pre-aim %) is not clean — 54/66 (82%)
+samples are measuring either a teammate's position, a spectated player's aim, a UI
+element, or demon1's own gun model. Only 12/66 (18%) are confirmed real engagements.
+A real retrain needs, in priority order:
+1. A spectate-state filter: check for "SPECTATORS" HUD text or the death combat-report
+   overlay, drop the frame entirely (can't be recovered — wrong player's aim).
+2. A UI-state filter: detect the Tab-scoreboard overlay (drop frame) — cheap regex on
+   whether the "NAME / ULTIMATE / KDA / LOADOUT" table region is present.
+3. Hard-negative retraining for teammate-as-target using the frames above, since
+   filtering can't fully solve it (nameplate/color aren't always legible) — this is
+   the tradeoff flagged below about reintroducing a team-color signal.
+4. A second-streamer-overlay/replay-tag filter for the two REPLAY frames (low priority,
+   rare in this VOD, but worth a generic check since other pro VODs in the pipeline
+   likely have similar donor-cam overlays).
+
+# Next step when ready to retrain: use confirmed teammate/gun frames as hard
+# negatives for the head/body models (crop and label as background, or exclude
+# region from positive labels). Teammate false positives specifically may need a
+# team-color signal reintroduced (outline color) rather than pure shape/pose
+# training, since color-invariant grayscale training removed that signal on purpose
+# earlier in this project (see PLAN.md) — worth revisiting that tradeoff now that
+# teammate false positives are confirmed costly.

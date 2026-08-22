@@ -1,0 +1,9 @@
+Processed 61386 sampled frames (245544 total frames in clip).
+Found 55 engagements (enemy reveal moments).
+Average pre-aim distance: 12.55% of screen width
+Best (smallest): 0.64%  Worst (largest): 39.18%
+Near-smoke engagements: 10 (avg 9.39%)
+Clear-sightline engagements: 45 (avg 13.25%)
+Saved chart: engagements_demon1_chamber\preaim_distribution.png
+Saved per-engagement data: engagements_demon1_chamber\engagements.csv
+Saved annotated frames: engagements_demon1_chamber/
