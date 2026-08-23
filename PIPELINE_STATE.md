@@ -268,6 +268,73 @@ recovered, rest logged "couldn't recover scored box" (likely ffmpeg's
 original video-stream read did). Didn't chase this further since the
 recovered sample already showed a clean, decisive null result.
 
+## 2026-08-22 (cont'd): OCR nameplate also failed, ally classifier shows real signal
+
+Corrected cypher_c9_oxy review: `t2431.37s.jpg` was mislabeled
+teammate-as-target on a re-review pass, user confirmed it's a real enemy,
+flipped back to good and re-ran `filter_engagements.py` (78 kept again,
+matches original). Lesson: re-running `review_engagements.py` on an
+already-fully-reviewed folder does NOT resume/append — it's a no-op
+(`SystemExit(0)`) unless the `_review.csv` is backed up and cleared first.
+
+Tried the one remaining unexplored angle from the note above: OCR'ing the
+ally nameplate text directly (`calibrate_ocr_nameplate.py`, same 57
+good / 101 teammate recovered frames from asuna + cypher). Tested 4
+candidate bands (30/50/70/100px) above the recovered box. Also zero
+separation — hit rate ~0.19-0.28 for both classes at every band, and the
+"text" OCR found was mostly 2-3 char noise, not real names. Updated
+`feedback_ally_color_filter_ceiling` memory: three independent signals
+(ring color, nameplate color, nameplate OCR) have now all failed on real
+footage. **Automated teammate-as-target detection via hand-picked
+pixel/OCR signals is a closed question — do not retry any variant of
+this.**
+
+**New direction that actually works:** `extract_ally_classifier_dataset.py`
++ `train_ally_classifier.py` — instead of hand-picking a signal, crop the
+scored box (+35% padding for context) and train a small classifier: frozen
+pretrained ResNet18 backbone + a small trainable head (2-layer MLP, class-
+weighted loss for the 57/101 imbalance), heavy augmentation since the
+dataset is tiny. Result on the same 158 crops (127 train / 31 val,
+stratified): **87% val accuracy, 100% teammate recall, 83% precision**
+(confusion: tp=20 fp=4 fn=0 tn=7). This is real separation where three
+hand-picked signals found none — the model is picking up on something
+(pose/lighting/weapon-skin/texture) that isn't reducible to a simple color
+rule. Head weights saved to `ally_classifier_head.pt` (frozen backbone not
+included, re-downloads from torchvision on load).
+
+**Caveat — do not trust this yet:** val set is only 31 images (11 good).
+87% could be noise from such a small split. Not wired into
+`analyze_crosshair_placement.py` or the review GUI yet.
+
+### Next session: grow the classifier dataset before trusting/using it
+
+1. Box-recovery ceiling: `extract_ally_classifier_dataset.py` only
+   recovered 158/323 possible crops (57/95 good, 101/228 teammate) — same
+   ffmpeg `-ss` keyframe-seek miss noted in the calibration writeup above.
+   Worth investigating whether a frame-accurate seek (decode + count
+   frames instead of `-ss` fast seek) recovers more of the missed rows
+   before assuming 158 is the ceiling.
+2. More source videos = more data. Check the "Not yet recorded" list
+   below (recheck the channel front page first, it may be stale) and/or
+   resume the "not yet recorded" backlog through the yt-dlp -> 
+   `batch_analyze_downloads.py` -> `review_engagements.py` ->
+   `filter_engagements.py` pipeline (one video at a time, per the
+   established user preference below) to get more reviewed good/teammate
+   frames to extract crops from.
+3. Once the dataset is meaningfully bigger (some multiple of 158), rerun
+   `train_ally_classifier.py` and see if 87%/100%/83% holds or was a
+   small-sample fluke. A proper k-fold cross-validation would also be more
+   trustworthy than one random 80/20 split at this data size.
+4. Only after that: decide how to actually use it. Given the current
+   precision (4/11 good frames wrongly flagged in val), the right first
+   integration is a review-GUI pre-sort/pre-flag (surface likely-bad
+   frames first to speed up human review), not blind auto-rejection.
+5. Separately, still on the shelf: the actual point of the project —
+   trend/outlier analysis and a coaching-feedback layer on top of the 3
+   already-filtered engagement CSVs (demon1_chamber 19, asuna 17,
+   cypher_c9_oxy 78 good engagements). This got interrupted by the
+   teammate-FP detour above; pick whichever the user prioritizes first.
+
 ## Not yet recorded (from channel front page, latest first, as of 2026-08-16)
 
 - This Is What a MASTERED FADE Looks Like - NRG S0M RADIANT GAMEPLAY — 26:13
