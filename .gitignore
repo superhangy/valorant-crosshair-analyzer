@@ -5,6 +5,8 @@ dataset/
 dataset_head/
 dataset_head_gray/
 dataset_ally_classifier/
+dataset_gunmodel_classifier/
+dataset_enemy_classifier/
 runs/
 engagements/
 engagements_*/
@@ -12,3 +14,12 @@ validation_frames_*/
 __pycache__/
 hardneg_tmp.jpg
 *_log.txt
+*_predictions.csv
+*_enemy_predictions.csv
+*_gunmodel_predictions.csv
+*.out
+*.bak
+*_review.csv.bak*
+backlog_run_*.txt
+backlog_driver_log.txt
+backlog_watchdog.lock

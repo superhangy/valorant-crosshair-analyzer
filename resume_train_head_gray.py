@@ -27,7 +27,7 @@ def main():
         device=0,
         lr0=0.0001,
         project="runs",
-        name="valorant_head_gray_v1-3",
+        name="valorant_head_gray_v1-4",
     )
 
 

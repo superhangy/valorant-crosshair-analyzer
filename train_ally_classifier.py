@@ -2,13 +2,16 @@
 Train a small good-vs-teammate-as-target classifier on the box crops from
 extract_ally_classifier_dataset.py (dataset_ally_classifier/{good,teammate}/).
 
-Only 158 images total (57 good / 101 teammate) -- too small to train a CNN
-from scratch without instant overfitting, so this freezes a pretrained
-ResNet18 backbone and trains only a small linear head on top of its
-features, with heavy augmentation to squeeze more signal out of the few
-real images available. Reports val accuracy/precision/recall per class and
-saves the head weights -- does NOT wire this into analyze_crosshair_placement.py,
-that's a separate step once/if this proves out.
+Frozen-backbone (ResNet18 + small MLP head) plateaued at ~93-94% val acc
+across 3 retrains despite the dataset more than doubling -- more of the
+same-kind data isn't moving a fully-frozen ImageNet backbone. This version
+unfreezes layer4 (the last residual block) so the backbone can adapt to
+Valorant-specific features (weapon skins, poses, HUD) instead of only
+generic ImageNet features, with a lower LR on the unfrozen backbone params
+than the head to avoid wrecking the pretrained features on this small a
+dataset. Saves the FULL backbone state_dict now (not just the head) since
+layer4 weights diverge from the ImageNet checkpoint during training --
+predict_teammate_prob.py must load the same way.
 
 Usage:
     python train_ally_classifier.py
@@ -32,6 +35,9 @@ SEED = 42
 BATCH_SIZE = 16
 EPOCHS = 30
 LR = 1e-3
+BACKBONE_LR = 1e-5  # lower than head LR -- avoid wrecking pretrained features on 814 images
+UNFREEZE_LAYERS = ["layer4"]  # last residual block only, not the whole backbone
+WEIGHT_DECAY = 1e-4
 
 CLASSES = ["good", "teammate"]  # index 0 / 1
 
@@ -93,6 +99,9 @@ def build_model():
     backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
     for p in backbone.parameters():
         p.requires_grad = False
+    for name in UNFREEZE_LAYERS:
+        for p in getattr(backbone, name).parameters():
+            p.requires_grad = True
     in_features = backbone.fc.in_features
     backbone.fc = nn.Sequential(
         nn.Linear(in_features, 64),
@@ -156,7 +165,14 @@ def main():
         dtype=torch.float32,
     ).to(device)
     criterion = nn.CrossEntropyLoss(weight=weights)
-    optimizer = torch.optim.Adam(model.fc.parameters(), lr=LR)
+    backbone_params = [p for name in UNFREEZE_LAYERS for p in getattr(model, name).parameters()]
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.fc.parameters(), "lr": LR},
+            {"params": backbone_params, "lr": BACKBONE_LR},
+        ],
+        weight_decay=WEIGHT_DECAY,
+    )
 
     best_val_acc = 0.0
     for epoch in range(1, EPOCHS + 1):
@@ -177,7 +193,7 @@ def main():
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            torch.save(model.fc.state_dict(), WEIGHTS_OUT)
+            torch.save(model.state_dict(), WEIGHTS_OUT)
 
     print(f"\nbest val_acc={best_val_acc:.3f} -> head weights saved to {WEIGHTS_OUT}")
     final_acc, final_prec, final_rec, confusion = evaluate(model, val_loader, device)

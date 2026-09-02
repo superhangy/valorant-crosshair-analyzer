@@ -48,6 +48,11 @@ HEAD_MUST_BE_INSIDE_BODY_BOX = True
 TOP_EXCLUSION_HEIGHT_FRAC = 0.20
 BOTTOM_EXCLUSION_HEIGHT_FRAC = 0.75
 
+# Gun-viewmodel-as-head heuristic reject (see is_gun_viewmodel_box below for
+# the calibration this was derived from).
+GUN_VIEWMODEL_MIN_WIDTH_FRAC = 0.05
+GUN_VIEWMODEL_MIN_CENTER_X_FRAC = 0.55
+
 # Smoke tagging (additive metadata only — does not filter/exclude any
 # engagement, just labels it so smoke vs. no-smoke pre-aim can be sliced
 # later). HSV threshold, not a trained model: Valorant smokes read as a
@@ -254,6 +259,26 @@ def has_ally_nameplate(color_frame, box):
     return int(ally_pixels.sum()) >= ALLY_NAMEPLATE_PIXEL_THRESHOLD
 
 
+def is_gun_viewmodel_box(box, frame_w, frame_h):
+    # The player's own gun/fist viewmodel sometimes fools both the head and
+    # body detectors at once (see HEAD_MUST_BE_INSIDE_BODY_BOX comment above)
+    # so cross-checking alone doesn't catch it. Calibrated against 250
+    # reviewed "good" vs 56 "gun-viewmodel-as-head" scored boxes: real
+    # enemy boxes cluster narrow (median 2.3% of frame width) and centered
+    # near the crosshair (median x-center ~50%), since that's where the
+    # player was aiming. Viewmodel boxes run much wider (median 6.6%) and
+    # sit right-of-center (median x-center ~63%, weapon held on-screen
+    # right). Backtested at ~73% catch / ~3% cost on that sample, but not
+    # yet trusted against real accuracy at scale -- per user request
+    # (2026-08-26) this is prediction-only for now (see gun_viewmodel_pred
+    # in the engagements.csv output), not a reject. gun-viewmodel-as-head
+    # stays a manual review category either way.
+    x1, y1, x2, y2 = box
+    width_frac = (x2 - x1) / frame_w
+    center_x_frac = ((x1 + x2) / 2) / frame_w
+    return width_frac > GUN_VIEWMODEL_MIN_WIDTH_FRAC and center_x_frac > GUN_VIEWMODEL_MIN_CENTER_X_FRAC
+
+
 def is_killcam_frame(frame):
     h_img, w_img = frame.shape[:2]
     y1 = int(h_img * KILLCAM_BANNER_Y_FRAC[0])
@@ -319,6 +344,27 @@ def is_combat_report_frame(frame):
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     text = pytesseract.image_to_string(binary, config="--psm 6").upper()
     return "COMBAT REPORT" in text
+
+
+def is_match_end_frame(frame):
+    # Post-round/post-match victory-defeat summary screen (huge stylized
+    # "VICTORY"/"DEFEAT" art + an MVP stat card) and the pre-match agent-
+    # select screen both got mistaken for real engagements -- a character
+    # model standing against a near-flat colored background reads as a
+    # legit head+body to both detectors. Tried a pure color-uniformity
+    # heuristic first (checking how much of the frame one dominant hue
+    # covers) but it wasn't reliable -- some real gameplay frames with a
+    # large single-color wall (e.g. Lotus's red temple interior) score just
+    # as "flat" as these UI screens. "KDA" on the MVP card is a clean,
+    # locale-independent signal instead (unlike "VICTORY", which is
+    # rendered in the client's language -- this VOD's Chinese client shows
+    # "胜利" there, not the English word) -- confirmed zero false positives
+    # against real gameplay, spectate, and Tab-scoreboard frames. Only
+    # catches the post-match screen, not the agent-select screen (no KDA
+    # card there) -- that's a separate, still-open false-positive source.
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray)
+    return "KDA" in text.upper()
 
 
 def is_scoreboard_frame(frame):
@@ -432,6 +478,7 @@ def main():
         # see the comments above HEAD_MUST_BE_INSIDE_BODY_BOX.
         best_box = None
         best_dist = None
+        best_outline_box = None
         for box in head_boxes:
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             hx, hy = (x1 + x2) / 2, (y1 + y2) / 2
@@ -451,12 +498,13 @@ def main():
             if best_dist is None or dist < best_dist:
                 best_dist = dist
                 best_box = (hx, hy, float(box.conf[0]), x1, y1, x2, y2)
+                best_outline_box = outline_box
 
         if best_box is None:
             frames_since_seen += 1
             continue
 
-        if is_spectate_frame(frame) or is_combat_report_frame(frame):
+        if is_spectate_frame(frame) or is_combat_report_frame(frame) or is_match_end_frame(frame):
             # OCR is slow, so this only runs on frames that already cleared
             # every cheap check and found a head candidate -- a few hundred
             # times per video rather than tens of thousands. Post-death
@@ -485,6 +533,9 @@ def main():
             local_smoke_pct = smoke_coverage_pct(smoke_mask, lx1, ly1, lx2, ly2)
             smoke_present = local_smoke_pct > SMOKE_PRESENT_THRESHOLD_PCT
 
+            box_x1, box_y1, box_x2, box_y2 = best_outline_box
+            gun_viewmodel_pred = is_gun_viewmodel_box(best_outline_box, frame_w, frame_h)
+
             engagements.append({
                 "timestamp_s": round(timestamp, 2),
                 "distance_px": round(best_dist, 1),
@@ -493,6 +544,21 @@ def main():
                 "smoke_present": smoke_present,
                 "smoke_near_target_pct": round(local_smoke_pct, 2),
                 "smoke_frame_coverage_pct": round(frame_smoke_pct, 2),
+                # Prediction only, not a filter -- accuracy not yet trusted
+                # (see is_gun_viewmodel_box), so nothing gets dropped based
+                # on this. Recorded so it can be spot-checked against real
+                # review labels before ever being turned back into a reject.
+                "gun_viewmodel_pred": gun_viewmodel_pred,
+                # The scored box (body-outline box, same one is_ally_outline/
+                # has_ally_nameplate checked above) -- saved so downstream
+                # tools (predict_teammate_prob.py, extract_ally_classifier_
+                # dataset.py) can crop directly instead of re-running head+body
+                # detection on a re-extracted frame, which misses boxes when
+                # ffmpeg's -ss seek lands on a slightly different frame.
+                "box_x1": round(box_x1, 1),
+                "box_y1": round(box_y1, 1),
+                "box_x2": round(box_x2, 1),
+                "box_y2": round(box_y2, 1),
             })
 
             # Draw both models' boxes so a human reviewer can see exactly
@@ -516,7 +582,9 @@ def main():
     # Save results
     with open(os.path.join(output_dir, "engagements.csv"), "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["timestamp_s", "distance_px", "distance_pct_width", "confidence",
-                                                "smoke_present", "smoke_near_target_pct", "smoke_frame_coverage_pct"])
+                                                "smoke_present", "smoke_near_target_pct", "smoke_frame_coverage_pct",
+                                                "gun_viewmodel_pred",
+                                                "box_x1", "box_y1", "box_x2", "box_y2"])
         writer.writeheader()
         writer.writerows(engagements)
 

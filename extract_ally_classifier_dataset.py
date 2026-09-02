@@ -22,7 +22,7 @@ import cv2
 from ultralytics import YOLO
 
 from analyze_crosshair_placement import HEAD_MODEL_PATH, BODY_MODEL_PATH
-from calibrate_ally_filter import find_scored_box
+from calibrate_ally_filter import find_scored_box, load_boxes_from_engagements_csv
 from extract_hard_negatives_from_review import extract_frame, find_video_for_slug
 
 TIMESTAMP_RE = re.compile(r"^t(\d+\.\d+)s\.jpg$")
@@ -74,6 +74,8 @@ def main():
             reader = csv.DictReader(f)
             wanted = [r for r in reader if r["label"] == "good" or r["category"] == "teammate-as-target"]
 
+        saved_boxes = load_boxes_from_engagements_csv(folder)
+
         print(f"{folder.name}: {len(wanted)} rows ({video.name})")
         for row in wanted:
             m = TIMESTAMP_RE.match(row["filename"])
@@ -92,7 +94,11 @@ def main():
                 failed_ffmpeg += 1
                 continue
             frame_h, frame_w = frame.shape[:2]
-            box = find_scored_box(frame, head_model, body_model, frame_w, frame_h)
+            box = saved_boxes.get(row["filename"])
+            if box is None:
+                # fall back to re-detection for engagements.csv written before
+                # box coords were saved (see load_boxes_from_engagements_csv)
+                box = find_scored_box(frame, head_model, body_model, frame_w, frame_h)
             if box is None:
                 failed_box += 1
                 continue

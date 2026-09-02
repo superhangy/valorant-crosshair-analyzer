@@ -104,6 +104,37 @@ def find_scored_box(frame, head_model, body_model, frame_w, frame_h):
     return best_box
 
 
+def load_boxes_from_engagements_csv(folder: Path) -> dict:
+    """filename -> (x1, y1, x2, y2) for every row that has box coords saved.
+
+    engagements.csv written by analyze_crosshair_placement.py (post-2026-08-23)
+    stores the exact scored box per engagement, so callers can crop directly
+    instead of re-extracting the frame and rerunning find_scored_box -- which
+    misses rows whenever ffmpeg's -ss seek lands on a slightly different frame
+    than the original video-stream read did. Older engagements.csv files
+    without the box_* columns return an empty dict (callers should fall back
+    to find_scored_box in that case).
+    """
+    csv_path = folder / "engagements.csv"
+    if not csv_path.exists():
+        return {}
+    boxes = {}
+    with open(csv_path, newline="") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames or "box_x1" not in reader.fieldnames:
+            return {}
+        for row in reader:
+            if not row.get("box_x1"):
+                continue
+            ts = float(row["timestamp_s"])
+            filename = f"t{ts:07.2f}s.jpg"
+            boxes[filename] = (
+                float(row["box_x1"]), float(row["box_y1"]),
+                float(row["box_x2"]), float(row["box_y2"]),
+            )
+    return boxes
+
+
 def main():
     if len(sys.argv) < 2:
         raise SystemExit("Usage: python calibrate_ally_filter.py <engagements_folder> [<folder> ...]")

@@ -1,0 +1,611 @@
+<title>The Pre-Aim Baseline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root {
+  --ground: #f3f1ea;
+  --surface: #ffffff;
+  --surface-2: #ecefec;
+  --ink: #17211f;
+  --ink-soft: #35423f;
+  --muted: #5d6b68;
+  --line: #daddd5;
+  --line-strong: #c3c8bd;
+  --accent: #0c9083;
+  --accent-ink: #06463f;
+  --bad: #cf3a53;
+  --bad-ink: #7c1c2c;
+  --grid: rgba(23, 33, 31, 0.08);
+  --shadow: 0 1px 2px rgba(23, 33, 31, .06), 0 12px 28px -18px rgba(23, 33, 31, .3);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0c1214;
+    --surface: #131c1e;
+    --surface-2: #1a2427;
+    --ink: #e8eeee;
+    --ink-soft: #c2cdcc;
+    --muted: #8a9c9b;
+    --line: #253032;
+    --line-strong: #33413f;
+    --accent: #38d6c7;
+    --accent-ink: #9deee5;
+    --bad: #f2637a;
+    --bad-ink: #ffb3bf;
+    --grid: rgba(232, 238, 238, 0.09);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 40px -22px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0c1214;
+  --surface: #131c1e;
+  --surface-2: #1a2427;
+  --ink: #e8eeee;
+  --ink-soft: #c2cdcc;
+  --muted: #8a9c9b;
+  --line: #253032;
+  --line-strong: #33413f;
+  --accent: #38d6c7;
+  --accent-ink: #9deee5;
+  --bad: #f2637a;
+  --bad-ink: #ffb3bf;
+  --grid: rgba(232, 238, 238, 0.09);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 40px -22px rgba(0,0,0,.7);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 940px; margin: 0 auto; padding: 0 24px; }
+
+h1, h2, h3 { font-family: "Chakra Petch", "IBM Plex Sans", sans-serif; font-weight: 600; text-wrap: balance; line-height: 1.15; }
+p { max-width: 68ch; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.mono { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+
+/* ---------- hero ---------- */
+.hero { padding: 84px 0 60px; border-bottom: 1px solid var(--line); }
+.hero h1 {
+  font-size: clamp(2.1rem, 5.4vw, 3.4rem);
+  font-weight: 700;
+  margin: 0 0 22px;
+  letter-spacing: -0.005em;
+}
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { font-size: 1.16rem; color: var(--ink-soft); margin: 0; }
+
+.reticle-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 34px;
+  align-items: center;
+  margin-top: 46px;
+}
+.reticle-figure { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.reticle-figure figcaption {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+.reticle-read { font-size: 1rem; color: var(--ink-soft); }
+.reticle-read strong { color: var(--ink); }
+@media (max-width: 620px) {
+  .reticle-row { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .reticle-read { max-width: 42ch; }
+}
+
+/* ---------- generic section ---------- */
+section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+section > .wrap > h2 {
+  font-size: 1.5rem;
+  margin: 0 0 8px;
+}
+section .section-note { color: var(--muted); font-size: .96rem; margin: 0 0 30px; }
+
+/* ---------- stat tiles ---------- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 20px 18px 18px;
+  box-shadow: var(--shadow);
+}
+.tile .v {
+  font-family: "Chakra Petch", sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.tile .v.good { color: var(--accent); }
+.tile .v.bad { color: var(--bad); }
+.tile .k {
+  margin-top: 10px;
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+@media (max-width: 720px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- histogram ---------- */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 26px 24px 18px;
+  box-shadow: var(--shadow);
+}
+.chart-card svg { display: block; width: 100%; height: auto; overflow: visible; }
+.axis-label { fill: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+.bar { fill: var(--accent); }
+.bar.far { fill: var(--bad); }
+.band-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  fill: var(--muted);
+}
+.rule { stroke: var(--line-strong); stroke-width: 1; }
+.rule-dash { stroke: var(--bad); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* ---------- breakdown tables ---------- */
+.table-scroll { overflow-x: auto; }
+table.bd {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .92rem;
+}
+table.bd th {
+  text-align: left;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 14px 10px 0;
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+table.bd td {
+  padding: 9px 14px 9px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+table.bd td:first-child { font-weight: 500; text-transform: capitalize; }
+table.bd .num { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.meter {
+  position: relative;
+  width: 190px;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.meter > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+.meter.wide > span { background: var(--bad); }
+@media (max-width: 640px) { .meter { width: 110px; } }
+
+.flag {
+  display: inline-block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .66rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+}
+.flag.tight { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.flag.loose { color: var(--bad-ink); background: color-mix(in srgb, var(--bad) 14%, transparent); border-color: color-mix(in srgb, var(--bad) 42%, transparent); }
+
+/* ---------- findings / callouts ---------- */
+.finding {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 22px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+.finding:last-child { border-bottom: 0; }
+.finding .big {
+  font-family: "Chakra Petch", sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.finding .big.bad { color: var(--bad); }
+.finding h3 { font-size: 1.02rem; margin: 0 0 4px; }
+.finding p { margin: 0; font-size: .95rem; color: var(--ink-soft); }
+@media (max-width: 560px) { .finding { grid-template-columns: 1fr; gap: 6px; } }
+
+/* ---------- outlier list ---------- */
+ol.audit { list-style: none; counter-reset: a; margin: 0; padding: 0; }
+ol.audit li {
+  counter-increment: a;
+  display: grid;
+  grid-template-columns: 26px 74px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: .9rem;
+}
+ol.audit li::before {
+  content: counter(a, decimal-leading-zero);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem;
+  color: var(--muted);
+}
+ol.audit .d { font-family: "Chakra Petch", sans-serif; font-weight: 700; color: var(--bad); font-variant-numeric: tabular-nums; }
+ol.audit .src { color: var(--ink-soft); }
+ol.audit .src .t { font-family: "IBM Plex Mono", monospace; color: var(--muted); font-size: .82rem; }
+
+/* ---------- method ---------- */
+.method-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px 40px; margin-top: 8px; }
+.method-grid h3 { font-size: .96rem; margin: 0 0 6px; display: flex; gap: 9px; align-items: baseline; }
+.method-grid h3 .step { font-family: "IBM Plex Mono", monospace; font-size: .74rem; color: var(--accent); }
+.method-grid p { font-size: .9rem; color: var(--ink-soft); margin: 0; max-width: none; }
+@media (max-width: 620px) { .method-grid { grid-template-columns: 1fr; } }
+
+.caveats { margin-top: 34px; padding: 20px 22px; background: var(--surface-2); border-left: 2px solid var(--line-strong); border-radius: 2px; }
+.caveats h3 { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-family: "IBM Plex Mono", monospace; }
+.caveats ul { margin: 0; padding-left: 18px; }
+.caveats li { font-size: .88rem; color: var(--ink-soft); margin: 5px 0; }
+
+footer { padding: 40px 0 70px; color: var(--muted); font-size: .82rem; font-family: "IBM Plex Mono", monospace; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .bar { transition: fill .2s; }
+}
+</style>
+
+<div class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Crosshair Discipline Analyzer &mdash; findings</p>
+    <h1>A pro's crosshair is <em>already on the head</em> before the fight starts.</h1>
+    <p class="lede">
+      Across 76 hand-reviewed radiant / pro VODs, the median enemy becomes
+      visible just <strong>3.1%&nbsp;of a screen-width</strong> from where the
+      crosshair already sits &mdash; close enough to be a click, not a flick.
+      This is the baseline every one of my own matches gets measured against.
+    </p>
+
+    <div class="reticle-row">
+      <figure class="reticle-figure">
+        <svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Reticle diagram: median enemy head appears 3.1 percent of screen width from crosshair center">
+          <circle cx="90" cy="90" r="78" fill="none" class="rule"/>
+          <circle cx="90" cy="90" r="46" fill="none" class="rule"/>
+          <circle cx="90" cy="90" r="20" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          <line x1="90" y1="58" x2="90" y2="74" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="90" y1="106" x2="90" y2="122" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="58" y1="90" x2="74" y2="90" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="106" y1="90" x2="122" y2="90" stroke="var(--accent)" stroke-width="2"/>
+          <circle cx="90" cy="90" r="2.4" fill="var(--accent)"/>
+          <circle cx="116" cy="79" r="7" fill="var(--bad)"/>
+          <line x1="92" y1="89" x2="112" y2="80" stroke="var(--bad)" stroke-width="1.4" stroke-dasharray="2 2"/>
+          <text x="128" y="72" class="axis-label" style="font-size:10px">head</text>
+        </svg>
+        <figcaption>median reveal &middot; 3.1% w</figcaption>
+      </figure>
+      <p class="reticle-read">
+        The metric is deliberately narrow: at the exact frame an enemy head
+        first appears, how far is it from screen-centre (Valorant always renders
+        the crosshair there)? A fine-tuned head detector finds the head, a
+        second body model cross-checks it, and every surviving frame is
+        reviewed by hand before it counts. <strong>2,145 engagements</strong>
+        cleared that gate.
+      </p>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">The distribution</p>
+    <h2>Most reveals land in the first two percent.</h2>
+    <p class="section-note">
+      Every filtered engagement, bucketed by crosshair-to-head distance at the
+      moment of the reveal. The long tail past 15% is where a pro actually had
+      to react &mdash; and where detector mistakes hide.
+    </p>
+    <div class="chart-card">
+      <svg id="hist" viewBox="0 0 900 320" role="img" aria-label="Histogram of crosshair-to-head distance across 2145 engagements. The distribution is heavily concentrated below 5 percent and has a long thin tail out to 40 percent.">
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Headline numbers</p>
+    <h2>What "disciplined" looks like as a number.</h2>
+    <p class="section-note">Percent of screen width. Lower is better &mdash; it means the crosshair was already there.</p>
+    <div class="tiles">
+      <div class="tile"><div class="v good">3.1%</div><div class="k">median crosshair-to-head distance at reveal</div></div>
+      <div class="tile"><div class="v good">64%</div><div class="k">of reveals are pre-aimed &mdash; within 5% (~a head at mid&nbsp;range)</div></div>
+      <div class="tile"><div class="v">36%</div><div class="k">are within 2% &mdash; the crosshair is essentially on the pixel</div></div>
+      <div class="tile"><div class="v bad">12%</div><div class="k">sit past 15% &mdash; a genuine flick was required</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Three things the data settles</p>
+    <h2>Findings.</h2>
+    <div class="finding">
+      <div class="big">+0.2%</div>
+      <div>
+        <h3>Smoke on the sightline barely moves pre-aim.</h3>
+        <p>
+          Reveals through or beside a smoke (n=805) have a median of 3.15% vs
+          2.98% on a clear sightline (n=1,340). The intuition that smokes wreck
+          crosshair placement doesn't hold &mdash; pros still pre-aim the
+          common angle whether or not they can see it.
+        </p>
+      </div>
+    </div>
+    <div class="finding">
+      <div class="big">3.1 &asymp; 2.9</div>
+      <div>
+        <h3>Duelist vs. support role predicts almost nothing.</h3>
+        <p>
+          Duelist engagements (n=1,204) median 3.14%; non-duelists (n=862)
+          median 2.93%. Entry-fragging duelists peek more <em>often</em>, but
+          they don't pre-aim any looser doing it. Crosshair discipline is a
+          personal skill, not an agent property.
+        </p>
+      </div>
+    </div>
+    <div class="finding">
+      <div class="big bad">7.3%</div>
+      <div>
+        <h3>Open-map angles cost roughly double.</h3>
+        <p>
+          Ascent (median 4.8%) and Breeze (4.0%) run well above the tight
+          angles of Split (2.4%) and Sunset (2.2%). Long sightlines mean more
+          possible enemy positions to split the crosshair between &mdash; the
+          same player pre-aims worse simply because the map gives them more to
+          cover.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">By agent</p>
+    <h2>Where the crosshair sits, by who's holding it.</h2>
+    <p class="section-note">Agents with 20+ reviewed engagements. Bar shows median distance (shorter = tighter); the flag marks the pre-aimed rate.</p>
+    <div class="table-scroll">
+      <table class="bd">
+        <thead><tr><th>Agent</th><th>Median distance</th><th class="num">%&nbsp;w</th><th class="num">n</th><th class="num">Pre-aimed</th></tr></thead>
+        <tbody id="agentBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">By player</p>
+    <h2>The names on the VODs.</h2>
+    <p class="section-note">Players with 20+ reviewed engagements, tightest first. Sample sizes vary widely &mdash; oxy has 669 reveals, sato has 20.</p>
+    <div class="table-scroll">
+      <table class="bd">
+        <thead><tr><th>Player</th><th>Median distance</th><th class="num">%&nbsp;w</th><th class="num">n</th><th class="num">Pre-aimed</th></tr></thead>
+        <tbody id="playerBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Audit queue</p>
+    <h2>The 15 worst individual reveals.</h2>
+    <p class="section-note">
+      Every one of these is either a genuine pro whiff worth studying or a
+      detector false-positive that slipped the hand-review. Both are useful:
+      the first teaches, the second sharpens the pipeline. This list is the
+      next thing to eyeball frame-by-frame.
+    </p>
+    <ol class="audit" id="auditList"></ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">How it's built</p>
+    <h2>From a raw VOD to one number.</h2>
+    <div class="method-grid">
+      <div>
+        <h3><span class="step">01</span> Sample</h3>
+        <p>Each VOD is walked at 30&nbsp;fps with OpenCV &mdash; fine enough to catch a reveal inside a 200&nbsp;ms reaction window.</p>
+      </div>
+      <div>
+        <h3><span class="step">02</span> Detect</h3>
+        <p>A YOLOv8 head detector fine-tuned on Valorant frames finds candidate heads; a separately-trained body model must agree, which kills most viewmodel and geometry false-positives.</p>
+      </div>
+      <div>
+        <h3><span class="step">03</span> Filter</h3>
+        <p>OCR and heuristic gates drop spectate mode, the scoreboard, kill-cams, buy phase and the match-end screen before anything is scored.</p>
+      </div>
+      <div>
+        <h3><span class="step">04</span> Reveal &amp; measure</h3>
+        <p>The first frame a head appears after being absent is the reveal. Distance from frame-centre to the head box is recorded as a percent of screen width.</p>
+      </div>
+      <div>
+        <h3><span class="step">05</span> Hand review</h3>
+        <p>Every surviving frame is clicked through by a human and labelled good or one of nine false-positive categories. Raw output is never used directly.</p>
+      </div>
+      <div>
+        <h3><span class="step">06</span> Pool &amp; compare</h3>
+        <p>The 76 reviewed CSVs are aggregated here. My own recorded matches run the identical pipeline, then sit next to this baseline.</p>
+      </div>
+    </div>
+
+    <div class="caveats">
+      <h3>Known limits</h3>
+      <ul>
+        <li>Distance is 2D screen distance, not angular error &mdash; a far enemy and a near one at the same pixel gap score alike.</li>
+        <li>Map is parsed from video titles; only 14 of 76 VODs name one, so per-map n is small.</li>
+        <li>The head detector's own hard-negative retrain collapsed three times &mdash; the hand-review gate exists because the detector alone can't be trusted.</li>
+        <li>Teammate-as-target is the dominant false-positive; a trained classifier now pre-flags it at ~96% but every frame is still reviewed.</li>
+        <li>This is a repost/compilation channel &mdash; footage is real ranked/pro play but not the players' own uploads.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    76 VODs &middot; 2,145 filtered engagements &middot; generated by analyze_pro_baseline.py &middot; offline analysis only
+  </div>
+</footer>
+
+<script>
+const HIST = [407,361,290,185,140,103,79,78,44,42,45,28,38,38,14,32,30,20,12,10,13,10,14,10,7,8,7,5,9,11,3,4,3,3,4,4,3,5,6,2,18];
+const AGENTS = [["reyna",125,2.18,71],["viper",70,2.24,70],["kayo",48,2.33,56],["clove",149,2.53,77],["cypher",85,2.67,62],["fade",58,2.72,67],["omen",35,2.78,66],["skye",55,2.91,65],["jett",308,2.92,64],["raze",126,3.33,65],["yoru",330,3.37,65],["vyse",31,3.39,65],["neon",300,3.49,61],["waylay",126,3.66,59],["chamber",129,3.73,59],["sova",60,3.82,57]];
+const PLAYERS = [["primmie",63,1.75,73],["cryo",44,1.85,82],["ion",80,1.87,76],["aspas",169,2.32,72],["sato",20,2.40,70],["aleksandar",29,2.42,62],["s0m",184,2.89,63],["demon1",205,3.06,66],["oxy",669,3.31,63],["eggsterr",155,3.41,63],["florescent",241,3.50,59],["nats",92,3.54,59],["derrek",95,3.81,60],["asuna",25,4.01,72],["zekken",27,7.26,41]];
+const AUDIT = [
+  [49.2,"oxy · neon","243.6s"],[49.0,"oxy · neon","451.0s"],[48.8,"derrek · sova","1348.9s"],
+  [48.8,"oxy · yoru","2080.5s"],[48.6,"nats · viper","1477.1s"],[48.1,"oxy · jett","2167.5s"],
+  [46.0,"ion · jett","826.5s"],[44.7,"oxy · cypher","74.8s"],[44.1,"oxy · jett","625.7s"],
+  [43.3,"demon1 · sova","545.8s"],[43.1,"oxy · cypher","2016.6s"],[41.8,"oxy · yoru · lotus","1019.2s"],
+  [41.6,"oxy · neon · breeze","1024.0s"],[41.4,"eggsterr · yoru","1457.2s"],[41.0,"derrek · harbor","1684.9s"]
+];
+
+// ---- histogram ----
+(function () {
+  const svg = document.getElementById("hist");
+  const W = 900, H = 320, padL = 44, padR = 12, padB = 46, padT = 12;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = HIST.length;
+  const bw = plotW / n;
+  const max = Math.max(...HIST);
+  const svgNS = "http://www.w3.org/2000/svg";
+  const frag = document.createDocumentFragment();
+
+  // y gridlines
+  [0, 100, 200, 300, 400].forEach(v => {
+    const y = padT + plotH - (v / max) * plotH;
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", padL); line.setAttribute("x2", W - padR);
+    line.setAttribute("y1", y); line.setAttribute("y2", y);
+    line.setAttribute("stroke", "var(--grid)"); line.setAttribute("stroke-width", "1");
+    frag.appendChild(line);
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", padL - 8); t.setAttribute("y", y + 3.5);
+    t.setAttribute("text-anchor", "end"); t.setAttribute("class", "axis-label");
+    t.textContent = v; frag.appendChild(t);
+  });
+
+  // bars
+  HIST.forEach((c, i) => {
+    const h = (c / max) * plotH;
+    const x = padL + i * bw;
+    const y = padT + plotH - h;
+    const r = document.createElementNS(svgNS, "rect");
+    r.setAttribute("x", x + 0.6); r.setAttribute("y", y);
+    r.setAttribute("width", Math.max(0.5, bw - 1.2)); r.setAttribute("height", h);
+    r.setAttribute("class", "bar" + (i >= 15 ? " far" : ""));
+    frag.appendChild(r);
+  });
+
+  // x ticks
+  [0, 5, 10, 15, 20, 30, 40].forEach(v => {
+    const x = padL + v * bw + bw / 2;
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", x); t.setAttribute("y", padT + plotH + 18);
+    t.setAttribute("text-anchor", "middle"); t.setAttribute("class", "axis-label");
+    t.textContent = v === 40 ? "40+" : v; frag.appendChild(t);
+  });
+
+  // threshold marker at 5%
+  const mx = padL + 5 * bw;
+  const ml = document.createElementNS(svgNS, "line");
+  ml.setAttribute("x1", mx); ml.setAttribute("x2", mx);
+  ml.setAttribute("y1", padT); ml.setAttribute("y2", padT + plotH);
+  ml.setAttribute("class", "rule-dash");
+  frag.appendChild(ml);
+  const mt = document.createElementNS(svgNS, "text");
+  mt.setAttribute("x", mx + 6); mt.setAttribute("y", padT + 14);
+  mt.setAttribute("class", "band-label"); mt.textContent = "pre-aim ≤ 5%";
+  frag.appendChild(mt);
+
+  // axis titles
+  const xt = document.createElementNS(svgNS, "text");
+  xt.setAttribute("x", padL + plotW / 2); xt.setAttribute("y", H - 6);
+  xt.setAttribute("text-anchor", "middle"); xt.setAttribute("class", "axis-label");
+  xt.textContent = "crosshair-to-head distance at reveal (% of screen width)";
+  frag.appendChild(xt);
+
+  svg.appendChild(frag);
+})();
+
+// ---- tables ----
+function fillTable(id, rows) {
+  const tb = document.getElementById(id);
+  const maxMed = Math.max(...rows.map(r => r[2]));
+  rows.forEach(([name, n, med, pre]) => {
+    const tr = document.createElement("tr");
+    const wide = med >= 5;
+    tr.innerHTML =
+      `<td>${name}</td>` +
+      `<td><div class="meter${wide ? " wide" : ""}"><span style="width:${(med / maxMed * 100).toFixed(1)}%"></span></div></td>` +
+      `<td class="num">${med.toFixed(2)}</td>` +
+      `<td class="num">${n}</td>` +
+      `<td class="num"><span class="flag ${pre >= 65 ? "tight" : "loose"}">${pre}%</span></td>`;
+    tb.appendChild(tr);
+  });
+}
+fillTable("agentBody", AGENTS);
+fillTable("playerBody", PLAYERS);
+
+// ---- audit list ----
+(function () {
+  const ol = document.getElementById("auditList");
+  AUDIT.forEach(([d, src, t]) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="d">${d.toFixed(1)}%</span>` +
+      `<span class="src">${src} <span class="t">@ ${t}</span></span>`;
+    ol.appendChild(li);
+  });
+})();
+</script>

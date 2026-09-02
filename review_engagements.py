@@ -10,6 +10,14 @@ to <folder>_review.csv as you go (one row per decision, flushed immediately -
 if you close the window partway through, re-running the same command resumes
 right where you left off).
 
+If <folder>_predictions.csv (see predict_teammate_prob.py),
+<folder>_gunmodel_predictions.csv (see predict_gunmodel_prob.py), and/or
+<folder>_enemy_predictions.csv (see predict_enemy_prob.py, general good-vs-bad
+across every category) exist, frames are sorted by whichever probability is
+higher first and all present scores are shown in the status bar -- a
+pre-sort/highlight only, every frame still gets manually reviewed and
+nothing is auto-dropped.
+
 Keys / buttons:
     G or Right arrow   -> Good (real detection)
     1  teammate-as-target
@@ -17,6 +25,9 @@ Keys / buttons:
     3  scoreboard-portrait-as-head
     4  spectate/killcam contamination
     5  other bad detection
+    6  yoru-clone-as-head
+    7  utility-as-head
+    8  map-geometry-as-head
     U or Backspace      -> undo last decision (go back one frame)
     Esc                 -> save and quit
 """
@@ -36,6 +47,9 @@ BAD_CATEGORIES = {
     "3": "scoreboard-portrait-as-head",
     "4": "spectate-killcam",
     "5": "other-bad",
+    "6": "yoru-clone-as-head",
+    "7": "utility-as-head",
+    "8": "map-geometry-as-head",
 }
 
 
@@ -52,6 +66,18 @@ class ReviewApp:
         self.frames = [f for f in all_frames if f.name not in already_done]
         self.total = len(all_frames)
         self.done_count = len(already_done)
+
+        self.predictions = self._load_predictions(f"{folder.name}_predictions.csv", "teammate_prob")
+        self.gunmodel_predictions = self._load_predictions(f"{folder.name}_gunmodel_predictions.csv", "gunmodel_prob")
+        self.enemy_predictions = self._load_predictions(f"{folder.name}_enemy_predictions.csv", "bad_prob")
+        if self.predictions or self.gunmodel_predictions or self.enemy_predictions:
+            def sort_key(f):
+                return max(
+                    self.predictions.get(f.name, -1.0),
+                    self.gunmodel_predictions.get(f.name, -1.0),
+                    self.enemy_predictions.get(f.name, -1.0),
+                )
+            self.frames.sort(key=sort_key, reverse=True)
 
         if not self.frames:
             print(f"All {self.total} frames already reviewed in {self.csv_path}")
@@ -97,6 +123,14 @@ class ReviewApp:
         with open(self.csv_path, newline="") as f:
             return {row["filename"] for row in csv.DictReader(f)}
 
+    def _load_predictions(self, filename: str, column: str) -> dict:
+        pred_path = self.folder.parent / filename
+        if not pred_path.exists():
+            return {}
+        with open(pred_path, newline="") as f:
+            return {row["filename"]: float(row[column])
+                     for row in csv.DictReader(f) if row[column]}
+
     def show_current(self):
         path = self.frames[self.index]
         img = Image.open(path)
@@ -105,9 +139,20 @@ class ReviewApp:
         self.image_label.configure(image=self.photo)
 
         seen = self.done_count + self.index
-        self.status_label.configure(
-            text=f"{path.name}   ({seen + 1}/{self.total})"
-        )
+        text = f"{path.name}   ({seen + 1}/{self.total})"
+        prob = self.predictions.get(path.name)
+        gun_prob = self.gunmodel_predictions.get(path.name)
+        bad_prob = self.enemy_predictions.get(path.name)
+        color = "black"
+        if prob is not None:
+            text += f"   [teammate_prob={prob:.2f}]"
+        if gun_prob is not None:
+            text += f"   [gunmodel_prob={gun_prob:.2f}]"
+        if bad_prob is not None:
+            text += f"   [bad_prob={bad_prob:.2f}]"
+        if any(p is not None and p >= 0.5 for p in (prob, gun_prob, bad_prob)):
+            color = "#c62828"
+        self.status_label.configure(text=text, fg=color)
 
     def _record(self, filename: str, label: str, category: str):
         with open(self.csv_path, "a", newline="") as f:
