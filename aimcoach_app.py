@@ -327,7 +327,77 @@ def _open_file(path):
         pass
 
 
+def selftest() -> int:
+    """--selftest: verify the frozen bundle can load everything. No GUI."""
+    ok = True
+
+    def check(label, fn):
+        nonlocal ok
+        try:
+            fn()
+            print(f"  OK   {label}")
+        except Exception as e:  # noqa: BLE001
+            ok = False
+            print(f"  FAIL {label}: {e}")
+
+    import app_paths
+    print("frozen:", app_paths.is_frozen(), " base:", app_paths.base_dir())
+
+    check("import torch / torchvision", lambda: __import__("torchvision"))
+    check("import cv2", lambda: __import__("cv2"))
+    check("import ultralytics", lambda: __import__("ultralytics"))
+    check("import numpy / PIL / matplotlib",
+          lambda: [__import__(m) for m in ("numpy", "PIL", "matplotlib")])
+
+    ff, ts = app_paths.ffmpeg_exe(), app_paths.tesseract_exe()
+    check(f"ffmpeg present ({ff})", lambda: _assert(Path(ff).exists()))
+    check(f"tesseract present ({ts})", lambda: _assert(Path(ts).exists()))
+
+    def _load_yolo():
+        from ultralytics import YOLO
+        import numpy as np
+        p = app_paths.resource_path("runs/detect/runs/valorant_head_gray_v1/weights/best.pt")
+        m = YOLO(str(p))
+        m((np.random.rand(320, 320, 3) * 255).astype("uint8"), verbose=False)
+
+    check("YOLO detector load + dummy inference", _load_yolo)
+
+    def _load_clf():
+        import torch
+        import predict_teammate_prob as c
+        c.build_model(torch.device("cpu"))
+
+    check("classifier load", _load_clf)
+    check("pro baseline csv",
+          lambda: _assert(app_paths.resource_path(
+              "analysis_output/engagements_pooled.csv").exists()))
+
+    print("\nSELFTEST", "PASS" if ok else "FAIL")
+    return 0 if ok else 1
+
+
+def _assert(cond):
+    if not cond:
+        raise AssertionError("not found")
+
+
+def _headless_cli() -> int:
+    """--clip <path> [--headless]: run the pipeline with no window (testing /
+    power users). Progress goes to stdout."""
+    argv = sys.argv[1:]
+    clip = argv[argv.index("--clip") + 1]
+    from coach_clip import run_coaching
+    res = run_coaching(Path(clip), headless=("--headless" in argv), progress=print)
+    print("report:", res["report_html"])
+    _open_file(res["report_html"])
+    return 0
+
+
 def main():
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
+    if "--clip" in sys.argv:
+        sys.exit(_headless_cli())
     # keep the OpenMP / thread pools from oversubscribing on a laptop
     os.environ.setdefault("OMP_NUM_THREADS", str(max(1, (os.cpu_count() or 4) // 2)))
     try:

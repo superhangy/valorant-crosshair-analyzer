@@ -27,11 +27,19 @@ def is_frozen() -> bool:
 
 
 def base_dir() -> Path:
-    """Root to resolve bundled resources against."""
+    """Root for resources bundled *inside* the PyInstaller archive
+    (models, the pooled csv) -- _MEIPASS when frozen, repo root otherwise."""
     if is_frozen():
-        # PyInstaller: data files land in _MEIPASS (onefile) or next to the
-        # exe (onedir). _MEIPASS is set in both cases.
         return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    return Path(__file__).resolve().parent
+
+
+def external_dir() -> Path:
+    """Directory that sits *next to* the exe (onedir) -- where big external
+    tools like vendor/ffmpeg and vendor/tesseract are kept unpacked, so
+    PyInstaller never has to scan their DLLs. Repo root when not frozen."""
+    if is_frozen():
+        return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent
 
 
@@ -39,19 +47,28 @@ def resource_path(relative: str) -> Path:
     return base_dir() / relative
 
 
+def _search_roots():
+    seen = []
+    for d in (external_dir(), base_dir()):
+        if d not in seen:
+            seen.append(d)
+    return seen
+
+
 def _from_env_or_which(env_var: str, exe_name: str, bundled_rel: str) -> str:
     override = os.environ.get(env_var)
     if override and Path(override).exists():
         return override
-    bundled = resource_path(bundled_rel)
-    if bundled.exists():
-        return str(bundled)
+    for root in _search_roots():
+        cand = root / bundled_rel
+        if cand.exists():
+            return str(cand)
     found = shutil.which(exe_name)
     if found:
         return found
-    # Last resort: return the bundled path anyway so the error message points
-    # somewhere useful.
-    return str(bundled)
+    # Last resort: return the expected path anyway so the error message
+    # points somewhere useful.
+    return str(external_dir() / bundled_rel)
 
 
 def ffmpeg_exe() -> str:

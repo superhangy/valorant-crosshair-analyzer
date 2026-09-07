@@ -38,3 +38,12 @@ auto_chain.sh
 backlog_run_*.txt
 backlog_driver_log.txt
 backlog_watchdog.lock
+
+# Portable-build artifacts. Binaries are fetched by build_release.py, the
+# final zip is attached to a GitHub Release -- none of it belongs in git.
+vendor/
+build/
+dist/
+.venv-build/
+*.spec.bak
+ValorantAimCoach*.zip
