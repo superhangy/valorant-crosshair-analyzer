@@ -229,7 +229,8 @@ def split_scores(scores: dict) -> tuple:
     return auto_keep, auto_drop, uncertain
 
 
-def spot_check(outdir: Path, uncertain: list, scores: dict, headless: bool) -> dict:
+def spot_check(outdir: Path, uncertain: list, scores: dict, headless: bool,
+               gui=None) -> dict:
     sc_csv = outdir / "spotcheck.csv"
     verdicts = {}
     if sc_csv.exists():
@@ -251,7 +252,10 @@ def spot_check(outdir: Path, uncertain: list, scores: dict, headless: bool) -> d
 
     print(f"[3/4] spot-check: {len(remaining)} uncertain frame(s) -- opening GUI")
     try:
-        _SpotCheckApp(outdir, remaining, scores, sc_csv, verdicts).run()
+        if gui:
+            gui(outdir, remaining, scores, sc_csv, verdicts)
+        else:
+            _SpotCheckApp(outdir, remaining, scores, sc_csv, verdicts).run()
     except Exception as exc:  # noqa: BLE001  -- tkinter on a headless box, etc.
         print(f"      GUI unavailable ({exc}); falling back to 0.5 split")
         for fname in remaining:
@@ -574,34 +578,33 @@ def write_report(outdir: Path, clip: Path, me: dict, base: dict, voff,
 
 # ---------------------------------------------------------------------------
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--clip", required=True, help="path to your gameplay clip")
-    ap.add_argument("--output", default=None,
-                    help="output dir (default: coach_<clip-slug>/)")
-    ap.add_argument("--reanalyze", action="store_true",
-                    help="force step 1 even if engagements.csv already exists")
-    ap.add_argument("--rescore", action="store_true",
-                    help="force step 2 even if coach_scores.csv already exists")
-    ap.add_argument("--headless", action="store_true",
-                    help="skip the spot-check GUI; split the uncertain frames at 0.5")
-    args = ap.parse_args()
+def run_coaching(clip: Path, outdir: Path = None, *, reanalyze=False,
+                 rescore=False, headless=False, progress=None,
+                 spotcheck_gui=None) -> dict:
+    """Full pipeline for one clip. Returns a result dict (paths + numbers).
 
-    clip = Path(args.clip)
+    progress:       optional callable(str) for status lines.
+    spotcheck_gui:  optional callable(outdir, frames, scores, csv_path,
+                    verdicts) that runs the keep/drop reviewer. Defaults to
+                    the built-in tkinter app; pass a no-op / custom one from
+                    another UI. Ignored when headless.
+    """
+    say = progress or print
+    clip = Path(clip)
     if not clip.exists():
         raise SystemExit(f"clip not found: {clip}")
-    outdir = Path(args.output) if args.output else REPO_ROOT / f"coach_{slugify(clip.stem)}"
+    outdir = Path(outdir) if outdir else REPO_ROOT / f"coach_{slugify(clip.stem)}"
     outdir.mkdir(parents=True, exist_ok=True)
 
-    rescore = args.rescore or args.reanalyze  # new analysis -> new scores
+    rescore = rescore or reanalyze  # new analysis -> new scores
     if rescore:
         (outdir / "spotcheck.csv").unlink(missing_ok=True)
 
-    rows = run_analysis(clip, outdir, args.reanalyze)
+    rows = run_analysis(clip, outdir, reanalyze, progress=progress)
     scores, meta = score_reveals(clip, outdir, rows, rescore)
     auto_keep, auto_drop, uncertain = split_scores(scores)
-    spot_verdicts = spot_check(outdir, uncertain, scores, args.headless)
+    spot_verdicts = spot_check(outdir, uncertain, scores, headless,
+                               gui=spotcheck_gui)
     uncertain_set = set(uncertain)
 
     kept_rows = build_kept(rows, auto_keep, uncertain_set, spot_verdicts)
@@ -627,17 +630,49 @@ def main():
     }
     tips = make_tips(me, base, voff, kept_rows)
     report = write_report(outdir, clip, me, base, voff, counts, tips)
+    from report_html import write_html_report
+    html_report = write_html_report(outdir, clip, me, base, voff, counts, tips, kept_rows)
 
-    print("\n" + "=" * 60)
-    print(f"[4/4] {counts['kept']} / {counts['total']} reveals kept after filtering")
+    say("")
+    say("=" * 60)
+    say(f"[4/4] {counts['kept']} / {counts['total']} reveals kept after filtering")
     if me["n"]:
-        print(f"      your median pre-aim: {me['median']:.2f}%   pro: {base['median']:.2f}%")
-        print(f"      your pre-aimed rate: {me['preaimed_pct']:.0f}%   pro: {base['preaimed_pct']:.0f}%")
-    print(f"      report:  {report}")
-    print(f"      kept set: {out_csv}")
-    print("=" * 60)
+        say(f"      your median pre-aim: {me['median']:.2f}%   pro: {base['median']:.2f}%")
+        say(f"      your pre-aimed rate: {me['preaimed_pct']:.0f}%   pro: {base['preaimed_pct']:.0f}%")
+    say(f"      report:  {report}")
+    say(f"      html:    {html_report}")
+    say(f"      kept set: {out_csv}")
+    say("=" * 60)
     for t in tips:
-        print(" - " + re.sub(r"\*\*", "", t))
+        say(" - " + re.sub(r"\*\*", "", t))
+
+    return {
+        "outdir": outdir,
+        "report_md": report,
+        "report_html": html_report,
+        "kept_csv": out_csv,
+        "me": me,
+        "base": base,
+        "counts": counts,
+        "tips": tips,
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--clip", required=True, help="path to your gameplay clip")
+    ap.add_argument("--output", default=None,
+                    help="output dir (default: coach_<clip-slug>/)")
+    ap.add_argument("--reanalyze", action="store_true",
+                    help="force step 1 even if engagements.csv already exists")
+    ap.add_argument("--rescore", action="store_true",
+                    help="force step 2 even if coach_scores.csv already exists")
+    ap.add_argument("--headless", action="store_true",
+                    help="skip the spot-check GUI; split the uncertain frames at 0.5")
+    args = ap.parse_args()
+    run_coaching(Path(args.clip), args.output, reanalyze=args.reanalyze,
+                 rescore=args.rescore, headless=args.headless)
 
 
 if __name__ == "__main__":

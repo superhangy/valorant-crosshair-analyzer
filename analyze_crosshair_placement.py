@@ -12,6 +12,8 @@ import os
 import shutil
 
 import cv2
+import matplotlib
+matplotlib.use("Agg")  # headless / worker-thread safe (no Tk backend)
 import matplotlib.pyplot as plt
 import numpy as np
 import pytesseract
