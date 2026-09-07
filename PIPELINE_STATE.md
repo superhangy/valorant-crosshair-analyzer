@@ -1115,6 +1115,61 @@ auto-rejected by any of the three; still pure pre-flag sort/highlight in
 4. Standing workflow still applies: after any new `filter_engagements.py`
    run, re-run `_retrain_classifiers.sh`.
 
+## 2026-09-07: coach_clip.py -- one-command hands-off self-coaching
+
+Built `coach_clip.py` (repo root) to make the learner-facing side of the
+pipeline usable without a full manual click-through. One command:
+
+    python coach_clip.py --clip "C:\Users\...\my_clip.mp4"
+
+Does, in one process, with resumable caching per stage:
+
+1. Shells out to `analyze_crosshair_placement.py --clip <clip> --output
+   coach_<slug>/` (the unchanged ~30-50 min GPU analysis).
+2. Scores every detected reveal with all three trained classifiers
+   (`predict_teammate_prob` / `predict_gunmodel_prob` / `predict_enemy_prob`
+   `build_model` + `predict_prob`, imported directly). Frame pixels come from
+   `extract_frame` (ffmpeg fast `-ss` seek -- cv2 `CAP_PROP_POS_FRAMES` per
+   frame was far too slow on long VODs). Box comes from the saved
+   `box_x1..y2` columns; falls back to `find_scored_box` re-detection for
+   pre-2026-08-23 `engagements.csv`. `bad_score = max(teammate, gunmodel,
+   bad_prob)`, same combine rule as `review_engagements.py`'s sort key.
+   Writes `coach_scores.csv` + `coach_meta.json`.
+3. Splits: `bad_score >= 0.70` auto-drop, `<= 0.30` auto-keep, the middle
+   (plus any frame with no usable crop) goes to a tiny tkinter keep/drop GUI
+   (`_SpotCheckApp`, K/D/U/Esc, writes `spotcheck.csv` per click, resumes).
+   `--headless` (or no display) splits the uncertain band at 0.5 instead.
+4. Builds the kept set -> `coach_<slug>/engagements_coached.csv` (same
+   columns as `engagements.csv`), compares to the pro baseline loaded live
+   from `analysis_output/engagements_pooled.csv` (hardcoded fallback: median
+   3.06 / p90 16.3 / 64% pre-aimed), and writes `coaching_report.md`:
+   your median / mean / p90 / pre-aimed-rate vs pro, the filtering
+   breakdown, and rule-based tips (pre-aim-gap bucket by ratio, pre-aimed
+   rate, consistency if p90 ratio >> median ratio, **crosshair height** from
+   the median vertical offset of the head box vs screen centre, smoke
+   penalty vs pro's ~+0.1%, and the 5 worst reveals by filename to eyeball).
+
+**Deliberately named `engagements_coached.csv`, not `engagements_filtered.csv`
+-- `analyze_pro_baseline.py` globs `engagements_*/engagements_filtered.csv`,
+so the auto-filtered output can never leak into the pro baseline.** The
+manual `review_engagements.py` -> `filter_engagements.py` gate is still the
+only thing allowed to feed the baseline (see the 2026-08-22 review-gate
+note); `coach_clip.py` is learner-trend feedback only, ~95% classifier
+accuracy, and says so in its own report footer.
+
+**Tested end-to-end** against `engagements_tl-nats-the-cypher-masterclass-
+with-33-kills-mvp/` (copied engagements.csv + frames into a temp dir, real
+source webm from Downloads, `--headless`): 138 reveals -> 103 auto-drop /
+30 auto-keep / 5 uncertain -> 32 kept. Manual review of that same video was
+36 kept -- classifier slightly aggressive but close, as expected. Baseline
+compare, vertical-offset tip, smoke tip, worst-5 all produced sane output.
+GUI path constructs but was not run interactively (no display in the test
+shell); it degrades to the 0.5 split on any tkinter error.
+
+Not yet run on an actual learner clip -- that's the next step (a Deathmatch
+DVR clip from `Videos\NVIDIA\Valorant\`, cleanest since FFA = no teammate
+false positives).
+
 ## Not yet recorded (from channel front page, latest first, as of 2026-08-16)
 
 - This Is What a MASTERED FADE Looks Like - NRG S0M RADIANT GAMEPLAY — 26:13
