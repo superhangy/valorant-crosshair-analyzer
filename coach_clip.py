@@ -92,7 +92,8 @@ def run_analysis(clip: Path, outdir: Path, reanalyze: bool, progress=None) -> li
         say(f"[1/4] reusing {eng_csv} ({len(rows)} reveals)")
         return rows
 
-    say(f"[1/4] analyzing {clip.name} -- this takes ~30-50 min ...")
+    say(f"[1/4] analyzing {clip.name} -- roughly 2x the clip's length on CPU "
+        f"(a 20-min clip ~40 min) ...")
     # Call the analysis in-process (no python.exe in the portable build).
     analyze(str(clip), str(outdir), progress=progress)
     if not eng_csv.exists():

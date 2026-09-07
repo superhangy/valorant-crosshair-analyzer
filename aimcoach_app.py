@@ -69,9 +69,17 @@ class Reviewer(tk.Toplevel):
         self.bind("<BackSpace>", lambda e: self.undo())
 
         self.remaining = [f for f in self.frames if f not in self.verdicts]
-        self._show()
-        self.grab_set()
+        if not self.remaining:
+            # nothing to review -- record and close on the next tick, after
+            # __init__ returns and the window actually exists
+            self.after(0, self._finish)
+            return
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
         self.focus_force()
+        self._show()
 
     def _show(self):
         if self.index >= len(self.remaining):
@@ -127,12 +135,19 @@ class Reviewer(tk.Toplevel):
                 w.writerow([k, v])
 
     def _finish(self):
+        if getattr(self, "_finished", False):
+            return
+        self._finished = True
         self._write()
         try:
             self.grab_release()
+        except tk.TclError:
+            pass
+        try:
             self.destroy()
-        finally:
-            self.on_done()
+        except tk.TclError:
+            pass
+        self.on_done()
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +174,8 @@ class App:
             text="Pick a Valorant gameplay clip. The tool finds every moment an "
                  "enemy first appears, measures how far your crosshair was from "
                  "their head, and compares you to a pool of pro VODs.\n"
-                 "Takes about 30-50 minutes. You can leave it running.",
+                 "Takes roughly twice the clip's length (a 20-minute clip is "
+                 "about 40 minutes). You can leave it running.",
         ).pack(**pad)
 
         row = tk.Frame(self.root)

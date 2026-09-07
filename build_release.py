@@ -41,8 +41,9 @@ HOW TO USE
      dangerous -- code-signing certificates cost money.)
   4. Click "Choose clip", pick a .mp4 of your gameplay.
      A Deathmatch clip works best. A full ranked match is fine too.
-  5. Click "Analyze" and wait ~30-90 minutes. You can minimise it and do
-     other things; just don't close it.
+  5. Click "Analyze" and wait. It takes roughly twice the length of your
+     clip (a 20-minute clip is about 40 minutes). Minimise it and do other
+     things if you like; just don't close it.
   6. Part way through, a small window shows you a handful of frames and
      asks "is this a real enemy?" -- click Keep or Drop for each.
   7. When it finishes, the coaching report opens in your browser. It is
