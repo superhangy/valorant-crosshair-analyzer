@@ -59,7 +59,11 @@ from extract_hard_negatives_from_review import extract_frame
 from analyze_crosshair_placement import HEAD_MODEL_PATH, BODY_MODEL_PATH, analyze
 
 REPO_ROOT = Path(__file__).resolve().parent
-POOLED_CSV = REPO_ROOT / "analysis_output" / "engagements_pooled.csv"
+try:
+    from app_paths import resource_path
+    POOLED_CSV = resource_path("analysis_output/engagements_pooled.csv")
+except Exception:  # pragma: no cover
+    POOLED_CSV = REPO_ROOT / "analysis_output" / "engagements_pooled.csv"
 
 # Locked pro baseline (2026-09-01: 100 VODs / 2741 engagements). Only used
 # if analysis_output/engagements_pooled.csv is missing.
@@ -593,7 +597,10 @@ def run_coaching(clip: Path, outdir: Path = None, *, reanalyze=False,
     clip = Path(clip)
     if not clip.exists():
         raise SystemExit(f"clip not found: {clip}")
-    outdir = Path(outdir) if outdir else REPO_ROOT / f"coach_{slugify(clip.stem)}"
+    # Default: a coach_<clipname> folder right next to the user's clip, so
+    # the results land somewhere they can actually find (not buried in the
+    # frozen app's _internal/).
+    outdir = Path(outdir) if outdir else clip.parent / f"coach_{slugify(clip.stem)}"
     outdir.mkdir(parents=True, exist_ok=True)
 
     rescore = rescore or reanalyze  # new analysis -> new scores
