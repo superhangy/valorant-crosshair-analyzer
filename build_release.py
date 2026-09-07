@@ -48,7 +48,7 @@ HOW TO USE
      asks "is this a real enemy?" -- click Keep or Drop for each.
   7. When it finishes, the coaching report opens in your browser. It is
      also saved as coaching_report.html in a new coach_<clipname> folder
-     next to the .exe.
+     right next to your clip file.
 
 REQUIREMENTS
   - 64-bit Windows 10 or 11
