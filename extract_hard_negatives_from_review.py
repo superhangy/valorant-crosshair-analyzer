@@ -18,19 +18,24 @@ import csv
 import re
 import subprocess
 import sys
+import tempfile
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from pathlib import Path
 
 import cv2
 
-FFMPEG = r"C:\Users\alexh\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0-full_build\bin\ffmpeg.exe"
+from app_paths import ffmpeg_exe
+
+FFMPEG = ffmpeg_exe()
 DOWNLOADS_DIR = Path(r"C:\Users\alexh\Downloads")
 REPO_ROOT = Path(__file__).resolve().parent
 
 DST_IMAGES = REPO_ROOT / "dataset_head_gray" / "train" / "images"
 DST_LABELS = REPO_ROOT / "dataset_head_gray" / "train" / "labels"
-TMP = REPO_ROOT / "hardneg_tmp.jpg"
+# Frame-extraction scratch file. Kept out of REPO_ROOT so it still works
+# when running from a read-only / frozen (PyInstaller) location.
+TMP = Path(tempfile.gettempdir()) / "aimcoach_frame_tmp.jpg"
 
 YOUTUBE_ID_RE = re.compile(r"\[([A-Za-z0-9_-]{11})\]")
 TIMESTAMP_RE = re.compile(r"^t(\d+\.\d+)s\.jpg$")

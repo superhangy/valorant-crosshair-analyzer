@@ -40,7 +40,10 @@ TRANSFORM = transforms.Compose([
 
 
 def build_model(device):
-    backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+    # weights=None: load_state_dict below fully replaces every parameter with
+    # the trained head_pt, so the ImageNet download is pure waste here and
+    # would break the offline / portable build.
+    backbone = models.resnet18(weights=None)
     for p in backbone.parameters():
         p.requires_grad = False
     in_features = backbone.fc.in_features

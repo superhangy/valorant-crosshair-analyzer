@@ -17,11 +17,16 @@ import numpy as np
 import pytesseract
 from ultralytics import YOLO
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+from app_paths import resource_path, tesseract_exe, tessdata_dir
+
+pytesseract.pytesseract.tesseract_cmd = tesseract_exe()
+_tessdata = tessdata_dir()
+if _tessdata:
+    os.environ.setdefault("TESSDATA_PREFIX", _tessdata)
 
 DEFAULT_CLIP_PATH = r"C:\Users\alexh\Videos\NVIDIA\Valorant\Valorant 2026.08.14 - 19.49.11.07.mp4"
-HEAD_MODEL_PATH = "runs/detect/runs/valorant_head_gray_v1/weights/best.pt"
-BODY_MODEL_PATH = "runs/detect/runs/valorant_enemy_v1-3/weights/best.pt"
+HEAD_MODEL_PATH = str(resource_path("runs/detect/runs/valorant_head_gray_v1/weights/best.pt"))
+BODY_MODEL_PATH = str(resource_path("runs/detect/runs/valorant_enemy_v1-3/weights/best.pt"))
 DEFAULT_OUTPUT_DIR = "engagements"
 
 HEAD_CONF_THRESHOLD = 0.4  # how sure the head model must be
@@ -394,13 +399,13 @@ def is_scoreboard_frame(frame):
     )
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--clip", default=DEFAULT_CLIP_PATH, help="Path to the gameplay clip to analyze")
-    parser.add_argument("--output", default=DEFAULT_OUTPUT_DIR, help="Directory for engagements.csv, preaim_distribution.png, and annotated frames")
-    args = parser.parse_args()
-    clip_path = args.clip
-    output_dir = args.output
+def analyze(clip_path, output_dir, progress=None):
+    """Run the full reveal-detection pass on one clip.
+
+    progress: optional callable(str) for a UI to show status lines; falls
+    back to print().
+    """
+    say = progress or print
 
     # Clear old annotated frames first - otherwise a rerun (e.g. after
     # swapping models) leaves stale frames from the previous run mixed in
@@ -415,6 +420,7 @@ def main():
     source_fps = cap.get(cv2.CAP_PROP_FPS)
     frame_w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     frame_h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
     center_x, center_y = frame_w / 2, frame_h / 2
 
     step = max(round(source_fps / PROCESS_FPS), 1)
@@ -424,12 +430,17 @@ def main():
     frames_since_seen = grace_samples + 1  # start "not visible"
     frame_index = 0
     sample_index = 0
+    next_progress_at = 0.0
 
     while True:
         ok = cap.grab()
         if not ok:
             break
         frame_index += 1
+        if total_frames and frame_index >= next_progress_at:
+            pct = 100.0 * frame_index / total_frames
+            say(f"  analyzing... {pct:4.1f}%  ({len(engagements)} reveals so far)")
+            next_progress_at = frame_index + total_frames / 100.0
         if frame_index % step != 0:
             continue
 
@@ -588,20 +599,20 @@ def main():
         writer.writeheader()
         writer.writerows(engagements)
 
-    print(f"Processed {sample_index} sampled frames ({frame_index} total frames in clip).")
-    print(f"Found {len(engagements)} engagements (enemy reveal moments).")
+    say(f"Processed {sample_index} sampled frames ({frame_index} total frames in clip).")
+    say(f"Found {len(engagements)} engagements (enemy reveal moments).")
 
     if engagements:
         distances = [e["distance_pct_width"] for e in engagements]
         avg = sum(distances) / len(distances)
-        print(f"Average pre-aim distance: {avg:.2f}% of screen width")
-        print(f"Best (smallest): {min(distances):.2f}%  Worst (largest): {max(distances):.2f}%")
+        say(f"Average pre-aim distance: {avg:.2f}% of screen width")
+        say(f"Best (smallest): {min(distances):.2f}%  Worst (largest): {max(distances):.2f}%")
 
         smoke_dists = [e["distance_pct_width"] for e in engagements if e["smoke_present"]]
         clear_dists = [e["distance_pct_width"] for e in engagements if not e["smoke_present"]]
-        print(f"Near-smoke engagements: {len(smoke_dists)}"
+        say(f"Near-smoke engagements: {len(smoke_dists)}"
               + (f" (avg {sum(smoke_dists)/len(smoke_dists):.2f}%)" if smoke_dists else ""))
-        print(f"Clear-sightline engagements: {len(clear_dists)}"
+        say(f"Clear-sightline engagements: {len(clear_dists)}"
               + (f" (avg {sum(clear_dists)/len(clear_dists):.2f}%)" if clear_dists else ""))
 
         plt.figure(figsize=(8, 5))
@@ -614,12 +625,23 @@ def main():
         plt.tight_layout()
         chart_path = os.path.join(output_dir, "preaim_distribution.png")
         plt.savefig(chart_path, dpi=150)
-        print(f"Saved chart: {chart_path}")
-        print(f"Saved per-engagement data: {os.path.join(output_dir, 'engagements.csv')}")
-        print(f"Saved annotated frames: {output_dir}/")
-        print(f"\nREVIEW REQUIRED before this data is used in any analysis:")
-        print(f"    python review_engagements.py {output_dir}")
-        print(f"    python filter_engagements.py {output_dir}")
+        plt.close()
+        say(f"Saved chart: {chart_path}")
+        say(f"Saved per-engagement data: {os.path.join(output_dir, 'engagements.csv')}")
+        say(f"Saved annotated frames: {output_dir}/")
+
+    return engagements
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clip", default=DEFAULT_CLIP_PATH, help="Path to the gameplay clip to analyze")
+    parser.add_argument("--output", default=DEFAULT_OUTPUT_DIR, help="Directory for engagements.csv, preaim_distribution.png, and annotated frames")
+    args = parser.parse_args()
+    analyze(args.clip, args.output)
+    print(f"\nREVIEW REQUIRED before this data is used in any analysis:")
+    print(f"    python review_engagements.py {args.output}")
+    print(f"    python filter_engagements.py {args.output}")
 
 
 if __name__ == "__main__":

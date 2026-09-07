@@ -7,13 +7,28 @@ dataset_head_gray/
 dataset_ally_classifier/
 dataset_gunmodel_classifier/
 dataset_enemy_classifier/
-runs/
+# Ignore everything under runs/ EXCEPT the two trained detector weights the
+# portable AimCoach build ships. (Must ignore contents, not the dir itself,
+# or the negations below can't re-include anything.)
+runs/**
+!runs/
+!runs/detect/
+!runs/detect/runs/
+!runs/detect/runs/valorant_head_gray_v1/
+!runs/detect/runs/valorant_head_gray_v1/weights/
+!runs/detect/runs/valorant_head_gray_v1/weights/best.pt
+!runs/detect/runs/valorant_enemy_v1-3/
+!runs/detect/runs/valorant_enemy_v1-3/weights/
+!runs/detect/runs/valorant_enemy_v1-3/weights/best.pt
 engagements/
 engagements_*/
 validation_frames_*/
 __pycache__/
 hardneg_tmp.jpg
 *_log.txt
+*.log
+validation_results_*.csv
+auto_chain.sh
 *_predictions.csv
 *_enemy_predictions.csv
 *_gunmodel_predictions.csv

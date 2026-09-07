@@ -56,7 +56,7 @@ import predict_enemy_prob as enemy_clf
 from extract_ally_classifier_dataset import padded_crop
 from calibrate_ally_filter import find_scored_box
 from extract_hard_negatives_from_review import extract_frame
-from analyze_crosshair_placement import HEAD_MODEL_PATH, BODY_MODEL_PATH
+from analyze_crosshair_placement import HEAD_MODEL_PATH, BODY_MODEL_PATH, analyze
 
 REPO_ROOT = Path(__file__).resolve().parent
 POOLED_CSV = REPO_ROOT / "analysis_output" / "engagements_pooled.csv"
@@ -80,26 +80,23 @@ def slugify(name: str) -> str:
 # Step 1 -- analysis
 # ---------------------------------------------------------------------------
 
-def run_analysis(clip: Path, outdir: Path, reanalyze: bool) -> list:
+def run_analysis(clip: Path, outdir: Path, reanalyze: bool, progress=None) -> list:
+    say = progress or print
     eng_csv = outdir / "engagements.csv"
     if eng_csv.exists() and not reanalyze:
         rows = _read_engagements(eng_csv)
-        print(f"[1/4] reusing {eng_csv} ({len(rows)} reveals)")
+        say(f"[1/4] reusing {eng_csv} ({len(rows)} reveals)")
         return rows
 
-    print(f"[1/4] analyzing {clip.name} -- this takes ~30-50 min ...")
-    result = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "analyze_crosshair_placement.py"),
-         "--clip", str(clip), "--output", str(outdir)],
-    )
-    if result.returncode != 0:
-        raise SystemExit("analyze_crosshair_placement.py failed -- see output above")
+    say(f"[1/4] analyzing {clip.name} -- this takes ~30-50 min ...")
+    # Call the analysis in-process (no python.exe in the portable build).
+    analyze(str(clip), str(outdir), progress=progress)
     if not eng_csv.exists():
         raise SystemExit(f"no {eng_csv} was produced")
     rows = _read_engagements(eng_csv)
     if not rows:
         raise SystemExit("0 reveals detected in this clip -- nothing to coach")
-    print(f"[1/4] {len(rows)} reveals detected")
+    say(f"[1/4] {len(rows)} reveals detected")
     return rows
 
 
