@@ -56,11 +56,14 @@ class Reviewer(tk.Toplevel):
         self.status.pack(pady=(0, 6))
         bar = tk.Frame(self)
         bar.pack(pady=(0, 10))
-        tk.Button(bar, text="  Real enemy -- KEEP  (K / →)", bg="#2e7d32", fg="white",
-                  font=("Segoe UI", 10, "bold"), command=self.keep).pack(side=tk.LEFT, padx=6)
-        tk.Button(bar, text="  Not an enemy -- DROP  (D / ←)", bg="#c62828", fg="white",
-                  font=("Segoe UI", 10, "bold"), command=self.drop).pack(side=tk.LEFT, padx=6)
-        tk.Button(bar, text="Undo (U)", command=self.undo).pack(side=tk.LEFT, padx=16)
+        self.keep_btn = tk.Button(bar, text="  Real enemy -- KEEP  (K / →)", bg="#2e7d32", fg="white",
+                  font=("Segoe UI", 10, "bold"), command=self.keep)
+        self.keep_btn.pack(side=tk.LEFT, padx=6)
+        self.drop_btn = tk.Button(bar, text="  Not an enemy -- DROP  (D / ←)", bg="#c62828", fg="white",
+                  font=("Segoe UI", 10, "bold"), command=self.drop)
+        self.drop_btn.pack(side=tk.LEFT, padx=6)
+        self.undo_btn = tk.Button(bar, text="Undo (U)", command=self.undo)
+        self.undo_btn.pack(side=tk.LEFT, padx=16)
         self.bind("<k>", lambda e: self.keep())
         self.bind("<Right>", lambda e: self.keep())
         self.bind("<d>", lambda e: self.drop())
@@ -104,6 +107,8 @@ class Reviewer(tk.Toplevel):
                  f"(not a teammate, not your own gun, not a UI element)")
 
     def _record(self, verdict):
+        if self.index >= len(self.remaining):
+            return
         fname = self.remaining[self.index]
         self.verdicts[fname] = verdict
         self.history.append(fname)
@@ -139,6 +144,10 @@ class Reviewer(tk.Toplevel):
             return
         self._finished = True
         self._write()
+        for btn in (self.keep_btn, self.drop_btn, self.undo_btn):
+            btn.configure(state=tk.DISABLED)
+        for seq in ("<k>", "<Right>", "<d>", "<Left>", "<u>", "<BackSpace>"):
+            self.unbind(seq)
         try:
             self.grab_release()
         except tk.TclError:
